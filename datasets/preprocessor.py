@@ -1,10 +1,13 @@
 import os
+import re
+import csv
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 
 import numpy as np
 from datasets import audio
 from wavenet_vocoder.util import is_mulaw, is_mulaw_quantize, mulaw, mulaw_quantize
+from pypinyin import pinyin, lazy_pinyin, Style
 
 
 def build_from_path(hparams, input_dirs, mel_dir, linear_dir, wav_dir, n_jobs=12, tqdm=lambda x: x):
@@ -46,6 +49,55 @@ def build_from_path(hparams, input_dirs, mel_dir, linear_dir, wav_dir, n_jobs=12
 					wav_path = os.path.join(input_dir, 'Wave', '%s.wav' % sentence_index)
 					futures.append(executor.submit(partial(_process_utterance, mel_dir, linear_dir, wav_dir, sentence_index, wav_path, sentence_pinyin, hparams)))
 					index = index + 1
+	return [future.result() for future in tqdm(futures) if future.result() is not None]
+
+
+def build_from_path_mozilla(hparams, input_dirs, mel_dir, linear_dir, wav_dir, n_jobs=12, tqdm=lambda x: x):
+	"""
+	Preprocesses the speech dataset from a gven input path to given output directories
+
+	Args:
+		- hparams: hyper parameters
+		- input_dir: input directory that contains the files to prerocess
+		- mel_dir: output directory of the preprocessed speech mel-spectrogram dataset
+		- linear_dir: output directory of the preprocessed speech linear-spectrogram dataset
+		- wav_dir: output directory of the preprocessed speech audio dataset
+		- n_jobs: Optional, number of worker process to parallelize across
+		- tqdm: Optional, provides a nice progress bar
+
+	Returns:
+		- A list of tuple describing the train examples. this should be written to train.txt
+	"""
+
+	# We use ProcessPoolExecutor to parallelize across processes, this is just for
+	# optimization purposes and it can be omited
+	executor = ProcessPoolExecutor(max_workers=n_jobs)
+	futures = []
+	index = 1
+
+	path_pattern = re.compile(r'common_voice_zh-TW_([\d]+).mp3', re.S)
+
+	for input_dir in input_dirs:
+		with open(os.path.join(input_dir, 'validated.tsv'), encoding='utf-8') as tsvfile:
+
+			reader = csv.DictReader(tsvfile, delimiter='\t')
+			for row in reader:
+				pinyin = lazy_pinyin(row['sentence'], style=Style.TONE3)
+
+				path_match = re.match(path_pattern, row['path'])
+				if path_match:
+					path_index = path_match.group(1)
+				else:
+					path_index = -1
+
+				# get female voices only
+				if path_index != -1 and row['gender']=='female' :
+					print('path={path}, path_index={path_index}, sentence={sentence}, gender={gender}, pinyin={pinyin}'.format(path=row['path'], path_index=path_index, sentence=row['sentence'], gender=row['gender'], pinyin=" ".join(pinyin)) )
+					# path=common_voice_zh-TW_18217583.mp3, path_index=18217583, sentence=無法申請補助, gender=female, pinyin=wu2 fa3 shen1 qing3 bu3 zhu4
+					wav_path = os.path.join(input_dir, 'clips_wav', 'common_voice_zh-TW_%s.wav' % path_index)
+
+					futures.append(executor.submit(partial(_process_utterance, mel_dir, linear_dir, wav_dir, path_index, wav_path, " ".join(pinyin), hparams)))
+
 	return [future.result() for future in tqdm(futures) if future.result() is not None]
 
 

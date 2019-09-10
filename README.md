@@ -1,34 +1,34 @@
 # Tacotron-2-Chinese
 
-## 预训练模型
+## 預訓練模型
 
-[标贝数据集100K步模型](https://github.com/JasonWei512/Tacotron-2-Chinese/releases/download/Biaobei_Tacotron-100K/logs-Tacotron-2.zip)
+[標貝數據集100K步模型](https://github.com/JasonWei512/Tacotron-2-Chinese/releases/download/Biaobei_Tacotron-100K/logs-Tacotron-2.zip)
 
-[生成语音样本](https://github.com/JasonWei512/Tacotron-2-Chinese/releases/download/Biaobei_Tacotron-100K/generated_sample.wav)
+[生成語音樣本](https://github.com/JasonWei512/Tacotron-2-Chinese/releases/download/Biaobei_Tacotron-100K/generated_sample.wav)
 
-仅Tacotron，无WaveNet（正在尝试 mulaw-quantize）
+僅Tacotron，無WaveNet（正在嘗試 mulaw-quantize）
 
-使用标贝数据集，为避免爆显存用了ffmpeg把语料的采样率从48KHz降到了36KHz
+使用標貝數據集，為避免爆顯存用了ffmpeg把語料的採樣率從48KHz降到了36KHz
 
-## 安装依赖
+## 安裝依賴
 
-1. 安装 Python 3 和 Tensorflow（在 Tensorflow 1.14 上用 WaveNet 会有Bug，在 1.10 上正常）
+1. 安裝 Python 3 和 Tensorflow（在 Tensorflow 1.14 上用 WaveNet 會有Bug，在 1.10 上正常）
 
-2. 安装依赖：
+2. 安裝依賴：
    ```
    apt-get install -y libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 ffmpeg libav-tools
    ```
 
-3. 安装 requirements：
+3. 安裝 requirements：
    ```
    pip install -r requirements.txt
    ```
 
-## 训练
+## 訓練
 
-1. **下载[标贝数据集](https://weixinxcxdb.oss-cn-beijing.aliyuncs.com/gwYinPinKu/BZNSYP.rar)，解压至 `Tacotron-2-Chinese`**
-   
-   目录结构如下：
+1. **下載[標貝數據集](https://weixinxcxdb.oss-cn-beijing.aliyuncs.com/gwYinPinKu/BZNSYP.rar)，解壓至 `Tacotron-2-Chinese`**
+  
+   目錄結構如下：
 
    ```
    Tacotron-2-Chinese
@@ -38,31 +38,61 @@
          |- Wave
    ```
 
-2. **用ffmpeg把BZNSYP/Wave中的wav的采样率降到36KHz**
+2. **用ffmpeg把BZNSYP/Wave中的wav的採樣率降到36KHz**
    ```
-   ffmpeg.exe -i 输入.wav -ar 36000 输出.wav
+   ffmpeg.exe -i 輸入.wav -ar 36000 輸出.wav
    ```
 
-3. **预处理数据**
+3. **預處理數據**
    ```
    python preprocess.py --dataset='Biaobei'
    ```
 
-4. **训练模型（自动从最新 Checkpoint 继续）**
+4. **訓練模型（自動從最新 Checkpoint 繼續）**
    ```
    python train.py --model='Tacotron-2'
    ```
 
-5. **从最新 Checkpoint 合成语音** 
+5. **從最新 Checkpoint 合成語音** 
 
    ```
    python synthesize.py --model='Tacotron-2' --text_list='sentences.txt'
    ```
-   无WaveNet时，Tacotron输出mel谱，后处理得线性谱，由Griffin-Lim生成波形
+   無WaveNet時，Tacotron輸出mel譜，後處理得線性譜，由Griffin-Lim生成波形
 
-&nbsp;
 
-&nbsp;
+
+# Tacotron-2-Mozilla Taiwan CommonVoice
+
+
+
+1. 由 [Mozilla Taiwan CommonVoice 下載語音](https://voice.mozilla.org/zh-TW/datasets)
+
+2. sample rate 轉為 16000
+
+3. 資料前處理
+
+	```
+	python preprocess.py --dataset='Mozilla' --hparams='sample_rate=16000' --output='training_data_mozilla'
+	```
+
+4. 訓練
+
+	```
+	python train.py --model='Tacotron-2' --hparams='sample_rate=16000' --input_dir='training_data_mozilla' --tacotron_input='training_data_mozilla/train.txt'
+	```
+
+5. 合成語音
+
+	```
+	python synthesize.py --model='Tacotron-2' --text_list='sentences.txt'
+	```
+
+	
+
+
+
+-----
 
 # Tacotron-2:
 Tensorflow implementation of DeepMind's Tacotron-2. A deep neural network architecture described in this paper: [Natural TTS synthesis by conditioning Wavenet on MEL spectogram predictions](https://arxiv.org/pdf/1712.05884.pdf)
